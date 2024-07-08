@@ -1,0 +1,37 @@
+# container 1 : image web php
+# 
+services:
+  php:
+    build:
+      dockerfile_inline: |
+        FROM php:8.2-fpm-alpine
+        ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
+        RUN install-php-extensions \
+            @composer mysqli pdo_mysql opcache intl xdebug
+        RUN apk add --no-cache bash && \
+            curl -1sLf 'https://dl.cloudsmith.io/public/symfony/stable/setup.alpine.sh' | bash && \
+            apk add symfony-cli
+    command: ['symfony', 'serve', '--no-tls']
+    volumes:
+      - .:/var/www/html
+      - ./php-fpm.conf:/usr/local/etc/php-fpm.conf
+      - ./php.ini:/usr/local/etc/php/php.ini
+    ports:
+      - 8000:8000
+  apache:
+    image: httpd:2.4
+    volumes:
+      - ./httpd.conf:/usr/local/apache2/conf/httpd.conf
+      - .:/var/www/html
+    ports:
+      - 8080:80
+  mariadb:
+    image: mariadb:latest
+    environment:
+      MARIADB_USER: mysql
+      MARIADB_PASSWORD: mysql
+      MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
+      MARIADB_DATABASE: app
+    volumes:
+      - ./my.cnf:/etc/mysql/mariadb.conf.d/100-docker.cnf
+      - ./var/volumes/mariadb:/var/lib/mysql:Z
